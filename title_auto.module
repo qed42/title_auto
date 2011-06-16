@@ -88,11 +88,11 @@ configuration setting for the module
 		$title = $form['title']['#value'];
 		if($title!='') {
 			$query = db_select('node', 'n');
-			$value = $query->fields('n', array('nid', 'title', 'type'));
+			$value = $query->fields('n', array('nid', 'title', 'type', 'created'));
 			$value = $query->condition(db_and()->condition('n.status', 1)->condition('title', db_like($title) . '%', 'LIKE'))->orderRandom()->execute();
 			//$item = array();
 			foreach ($value as $val) {
-				$item .= l(check_plain($val->title).'->	<'.$val->type.'>', 'node/'.$val->nid).'<br>';			
+				$item .= l(check_plain($val->title).'->	<'.$val->type.'>', 'node/'.$val->nid)."  Created On:".format_date($val->created,'medium','').'<br>';			
 			}
 			if($item == '') {
 				$item = 'No matching title exists';
