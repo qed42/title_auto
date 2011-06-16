@@ -1,0 +1,7 @@
+name = title_auto
+description = "An autocomplete textfield for all the content types"
+package = autocomplete
+core = "7.x"
+
+configure = admin/config/content/title_auto
+files[] = title_auto.module

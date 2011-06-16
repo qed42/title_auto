@@ -1,0 +1,117 @@
+<?php
+/**
+implementation of hook_menu
+**/
+	function title_auto_menu() {
+		$items = array();
+		$items['admin/config/content/title_auto'] = array(
+  		'title' => 'Autocomplete title Configuration',
+			'description' =>  'Configure title_autocomplete settings.',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('title_auto_admin'),			
+			'access arguments' => array('access content'),
+			'menu_name' => 'autocomplete title',
+		);		
+		return $items;
+	}
+/**
+implementation of hook_form_alter
+**/	
+	function title_auto_form_alter(&$form,&$form_state,$form_id) {		
+		
+		$types_registered = variable_get('title_auto_node');//variable to hold the content types registered for this module.
+		$type = node_type_get_types();
+		$types = array(); //array to hold the different content types in the system
+		$delta = 0;
+		if($type) {
+			foreach($type as $t) {
+				$types[$delta] = $t->type;
+				$delta++;
+			}
+		}
+		$formid = $form['form_id']['#value'];				
+		$curr_node_type = substr($formid,0,strpos($formid,'_'));	
+				
+		if(in_array($curr_node_type, $types)){//check if the current node is registered or not
+			if(($types_registered[$curr_node_type]==$curr_node_type)&&(!(is_int($types_registered[$curr_node_type])))) {					
+				$form['title']['#ajax'] = array (
+					'event' => 'blur',
+					'callback' => 'title_choice_js',
+				  'wrapper' => 'title_choices_div',
+				  'method' => 'replace',
+				  'effect' => 'slide',				  	
+				);			
+				/*wrapper to hold the data returned after the ajax call*/
+				$form['title_choices'] = array(
+					'#type' => 'fieldset',
+					'#title' => t("Suggestions"),
+					'#prefix' => '<div id="title_choices_div" style="margin-top:35px;">',
+					'#suffix' => '</div>',
+					'#collapsible' => 'TRUE',
+					'#weight' => -4.5,
+					'#description' => 'The titles matching to the title entered above appear here.'
+				);
+		/*		$form['future_date'] = array (
+					'#title' => 'Future publish date',
+					'#type' => 'date_popup',
+					'#id' => 'datepicker',
+					'#description' => 'Enter the date you want the node to be published on',					
+				);							*/
+			}									
+		}
+	}	
+	
+/**	
+configuration setting for the module
+**/
+	function title_auto_admin() {
+		$form = array();			
+		$types = node_type_get_types();
+	  foreach($types as $node_type) {  
+     $options[$node_type->type] = $node_type->name;
+  	}
+  	
+		$form['title_auto_node'] = array (
+			'#type' => 'checkboxes',
+			'#title' => t('List of Content types available for selection.'),  
+    	'#options' => $options,      	 
+    	'#default_value' => variable_get('title_auto_node', array('page')),
+    	'#description' => t('The title text field on all these content types will be converted as an autocomple with suggestions from the existing nodes.'),   		
+		);
+		
+		return system_settings_form($form);
+	}
+	
+		
+	function title_choice_js($form,$form_state) {			
+		$item = '';
+		$title = $form['title']['#value'];
+		if($title!='') {
+			$query = db_select('node', 'n');
+			$value = $query->fields('n', array('nid', 'title', 'type'));
+			$value = $query->condition(db_and()->condition('n.status', 1)->condition('title', db_like($title) . '%', 'LIKE'))->orderRandom()->execute();
+			//$item = array();
+			foreach ($value as $val) {
+				$item .= l(check_plain($val->title).'->	<'.$val->type.'>', 'node/'.$val->nid).'<br>';			
+			}
+			if($item == '') {
+				$item = 'No matching title exists';
+			}
+		}
+		else
+			$item = 'No title entered';
+			
+		$form['title_choices']['#description'] = $item;	
+		return $form['title_choices'];	
+	}
+	
+/*	function title_auto_node_presave($node) {	
+		if(property_exists('node','future_date')) {
+			if($node->future_date!=NULL) {
+				$node->created = strtotime($node->future_date);
+				$node->changed = strtotime($node->future_date);
+				$node->timestamp =strtotime($node->future_date);
+			}							
+		}
+	}
+	*/
